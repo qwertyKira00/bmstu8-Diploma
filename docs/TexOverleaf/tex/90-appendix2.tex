@@ -1,0 +1,76 @@
+\chapter{ПРИЛОЖЕНИЕ Б}
+\parindent = 1.25cm
+%Файл классификации:
+%\lstinputlisting[firstline=4,lastline=79]{Classification.py}
+%Файл нахождение дуги и аппроксимации:
+%\lstinputlisting[firstline=171,lastline=289]{Learning.py}
+
+\begin{lstlisting}[language=C, label=some-code, caption=Метод записи документа MongoDB в MIDI-файл (часть 1), label=lst:file_builder1]
+std::string parseMidiRecord(const BSONObj& doc) {
+    BSONObjIterator iter(doc);
+
+    BSONElement elem;
+    const char* bytes;
+    const char* fieldName;
+    const char* fileName;
+    std::string buffer;
+    int len;
+
+    while (iter.more()) {
+        elem = iter.next();
+        fieldName = elem.fieldName();
+        if (strcmp(fieldName, "_id") == 0)
+            continue;
+        if (strcmp(fieldName, "Name") == 0) {
+            fileName = elem.valueStringDataSafe().rawData();
+            continue;
+        }
+
+        BSONType t;
+        
+        t = elem.type();
+        if (t == Object || t == Array) {
+            BSONObj subObj = elem.embeddedObject();
+            BSONElement subElem;
+            BSONObjIterator subObjIter(subObj);
+
+            while (subObjIter.more()) {
+                subElem = subObjIter.next();
+
+                t = subElem.type();
+                if (t == Object || t == Array) {
+                    BSONObj mtrks = subElem.embeddedObject();
+                    BSONElement mtrk;
+                    BSONObjIterator mtrkIter(mtrks);
+
+                    while (mtrkIter.more()) {
+                        mtrk = mtrkIter.next();
+                        t = mtrk.type();
+                        bytes = getBsonElementValue(t, mtrk);
+                        len = mtrk.valuesize() - 5;
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, label=some-code, caption=Метод записи документа MongoDB в MIDI-файл (часть 2), label=lst:file_builder2]
+                        for (int i = 0; i < len; i++) {
+                            buffer += bytes[i];
+                        }
+                    }
+                }
+            }
+        } else {
+            len = elem.valuesize() - 5;
+            bytes = getBsonElementValue(t, elem);
+
+            for (int i = 0; i < len; i++) {
+                buffer += bytes[i];
+            }
+        }
+    }
+    return buffer;
+}
+\end{lstlisting}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "rpz"
+%%% End: 

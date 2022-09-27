@@ -1,0 +1,109 @@
+\chapter{ПРИЛОЖЕНИЕ А}
+\parindent = 1.25cm
+%Файл классификации:
+%\lstinputlisting[firstline=4,lastline=79]{Classification.py}
+%Файл нахождение дуги и аппроксимации:
+%\lstinputlisting[firstline=171,lastline=289]{Learning.py}
+
+\begin{lstlisting}[language=C, label=some-code, caption=Метод создания  документа MongoDB по спецификации MIDI (часть 1), label=lst:parser_midi1]
+BSONObj parseMidiFile(const vector<char> buffer, const string fileName) {
+    BSONObjBuilder builder;
+    int i;
+    int i_buff;
+
+    // MThd ID
+    char MThdId[5];
+    for (i_buff = 0, i = 0; i_buff < 4; i_buff++, i++) {
+        MThdId[i] = buffer[i_buff];
+    }
+    builder.append("ID", MThdId);
+
+    builder.append("Name", fileName);
+
+    // MThd Length
+    char MThdLength[5];
+    for (i_buff = 4, i = 0; i_buff < 8; i_buff++, i++) {
+        MThdLength[i] = buffer[i_buff];
+    }
+    builder.appendBinData("Length", 4, BinDataGeneral, MThdLength);
+
+    // MThd Format
+    char MThdFormat[3];
+    for (i_buff = 8, i = 0; i_buff < 10; i_buff++, i++) {
+        MThdFormat[i] = buffer[i_buff];
+    }
+    builder.appendBinData("Format", 2, BinDataGeneral, MThdFormat);
+
+    // MThd NumTracks
+    char MThdNumTracks[3];
+    for (i_buff = 10, i = 0; i_buff < 12; i_buff++, i++) {
+        MThdNumTracks[i] = buffer[i_buff];
+    }
+    builder.appendBinData("NumTracks", 2, BinDataGeneral, MThdNumTracks);
+
+    // MThd Division
+    char MThdDivision[3];
+    for (i_buff = 12, i = 0; i_buff < 14; i_buff++, i++) {
+        MThdDivision[i] = buffer[i_buff];
+    }
+    builder.appendBinData("Division", 2, BinDataGeneral, MThdDivision);
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, label=some-code, caption=Метод создания  документа MongoDB по спецификации MIDI (часть 2), label=lst:parser_midi2] 
+    // MThd MTrks
+    const int numTracks = convertByteToIntMthd(MThdNumTracks);
+    BSONArray mtrks = BSONArray();
+    int mtrkBegin = i_buff;
+    int mtrkOffset = i_buff;
+    int j;
+    int i_mtrk;
+
+    BSONObjBuilder mtrksBuilder(builder.subarrayStart("MTrks"));
+    for (i_mtrk = 0; i_mtrk < numTracks; i_mtrk++) {
+        BSONObjBuilder mtrkBuilder(mtrksBuilder.subobjStart("mtrk"));
+        // MTrk ID
+        char MTrkId[5];
+        mtrkOffset += 4;
+        for (j = mtrkBegin, i = 0; j < mtrkOffset; j++, i++) {
+            MTrkId[i] = buffer[j];
+        }
+        mtrkBuilder.append("ID", MTrkId);
+
+        mtrkBegin = mtrkOffset;
+        mtrkOffset += 4;
+
+        // MTrk Length
+        char MTrkLength[5];
+        for (j = mtrkBegin, i = 0; j < mtrkOffset; j++, i++) {
+            MTrkLength[i] = buffer[j];
+        }
+        mtrkBuilder.appendBinData("Length", 4, BinDataGeneral, MTrkLength);
+        const int mtrkLengthInt = convertByteToIntMtrk(MTrkLength);
+
+        mtrkBegin = mtrkOffset;
+        mtrkOffset += mtrkLengthInt;
+
+        // MTrk Data
+        char* Data = new char[mtrkLengthInt];
+        for (j = mtrkBegin, i = 0; j < mtrkOffset; j++, i++) {
+            Data[i] = buffer[j];
+        }
+        mtrkBuilder.appendBinData("Data", mtrkLengthInt, BinDataGeneral, Data);
+
+        mtrkBegin = mtrkOffset;
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, label=some-code, caption=Метод создания  документа MongoDB по спецификации MIDI (часть 3), label=lst:parser_midi3] 
+        mtrkBuilder.done();
+    }
+    mtrksBuilder.done();
+    BSONObj midi = builder.obj();
+
+    return midi;
+}
+\end{lstlisting}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "rpz"
+%%% End: 
